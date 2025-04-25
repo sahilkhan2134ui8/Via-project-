@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WhatsApp Sender</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #111; color: white; }
+    input, textarea, button { display: block; margin: 10px 0; padding: 10px; width: 100%; }
+    #pairCodeBox { font-size: 24px; font-weight: bold; margin-top: 20px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>WhatsApp Web Login</h1>
+  <div id="login-section">
+    <button onclick="startLogin()">Login to WhatsApp</button>
+    <div id="pairCodeBox"></div>
+  </div>
+
+  <div id="form-section" class="hidden">
+    <h2>Message Sender</h2>
+    <label>WhatsApp Number (with country code)</label>
+    <input id="number" placeholder="91XXXXXXXXXX" />
+
+    <label>Haters Name</label>
+    <input id="haters" placeholder="From Haters:" />
+
+    <label>Delay (seconds)</label>
+    <input id="delay" type="number" value="2" />
+
+    <label>Upload Message File (.txt)</label>
+    <input id="file" type="file" accept=".txt" />
+    
+    <button onclick="startSending()">Send Messages</button>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const socket = io();
+
+    function startLogin() {
+      socket.emit("start-login");
+    }
+
+    socket.on("pairCode", (code) => {
+      document.getElementById("pairCodeBox").innerText = "Pair Code: " + code;
+    });
+
+    socket.on("connected", () => {
+      document.getElementById("login-section").classList.add("hidden");
+      document.getElementById("form-section").classList.remove("hidden");
+    });
+
+    document.getElementById("file").addEventListener("change", function () {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        socket.emit("upload-message-file", e.target.result);
+      };
+      reader.readAsText(this.files[0]);
+    });
+
+    socket.on("file-uploaded", (count) => {
+      alert("Message lines uploaded: " + count);
+    });
+
+    function startSending() {
+      const number = document.getElementById("number").value;
+      const hatersName = document.getElementById("haters").value;
+      const delay = parseInt(document.getElementById("delay").value) || 1;
+
+      socket.emit("start-sending", { number, hatersName, delay });
+    }
+
+    socket.on("message-status", ({ index, text }) => {
+      const status = document.getElementById("status");
+      status.innerHTML += `<p>Sent ${index}: ${text}</p>`;
+    });
+
+    socket.on("done", () => {
+      alert("All messages sent!");
+    });
+  </script>
+</body>
+</html>
