@@ -5,94 +5,54 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WhatsApp Login</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background-color: #f0f0f0;
-    }
-    .container {
-      max-width: 500px;
-      margin: 0 auto;
-      padding: 20px;
-      background-color: #fff;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      border-radius: 8px;
-    }
-    input {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    button {
-      width: 100%;
-      padding: 10px;
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #45a049;
-    }
-    .pairCode {
-      margin-top: 20px;
-      font-size: 18px;
-      font-weight: bold;
-      color: #333;
-    }
+    /* Add your CSS here */
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Login with WhatsApp</h2>
-    <input type="text" id="whatsAppNumber" placeholder="Enter your WhatsApp number" />
-    <button onclick="startLogin()">Start Login</button>
-    
-    <div id="pairCodeSection" class="pairCode" style="display: none;">
-      <p>Scan the QR code or use the Pair Code below:</p>
-      <p id="pairCode"></p>
-    </div>
+  <h1>WhatsApp Login</h1>
+
+  <div>
+    <label for="number">Enter WhatsApp Number:</label>
+    <input type="text" id="number" placeholder="Enter Number (e.g. 1234567890)">
+    <button id="loginBtn">Login</button>
   </div>
+
+  <div id="pairCode" style="display:none;">
+    <p>Pair Code: <span id="pairCodeText"></span></p>
+    <img id="qrCode" style="display:none;" src="" alt="QR Code">
+  </div>
+
+  <div id="status"></div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
 
-    function startLogin() {
-      const number = document.getElementById('whatsAppNumber').value;
+    // Listen for QR and Pair Code
+    socket.on("qr", (qr) => {
+      const qrImage = `data:image/png;base64,${qr}`;
+      document.getElementById("qrCode").src = qrImage;
+      document.getElementById("qrCode").style.display = "block";
+    });
 
+    socket.on("pairCode", (pairCode) => {
+      document.getElementById("pairCodeText").innerText = pairCode;
+      document.getElementById("pairCode").style.display = "block";
+    });
+
+    socket.on("connected", () => {
+      document.getElementById("status").innerText = "Logged in successfully!";
+    });
+
+    document.getElementById("loginBtn").addEventListener("click", () => {
+      const number = document.getElementById("number").value;
       if (number) {
-        // Emit event to start the login process
-        socket.emit('start-login', { number });
-
-        // Show loading or some feedback
-        document.getElementById('pairCodeSection').style.display = 'none';
-        socket.on('qr', (qr) => {
-          // Display the QR code
-          const qrImage = new Image();
-          qrImage.src = `data:image/png;base64,${qr}`;
-          document.body.appendChild(qrImage);
-        });
-
-        socket.on('pairCode', (pairCode) => {
-          // Display the pair code
-          document.getElementById('pairCode').innerText = pairCode;
-          document.getElementById('pairCodeSection').style.display = 'block';
-        });
-
-        socket.on('connected', (status) => {
-          if (status) {
-            alert('Successfully connected to WhatsApp!');
-            // Proceed to the next step
-          }
-        });
+        socket.emit("start-login", number);
+        document.getElementById("status").innerText = "Logging in...";
       } else {
-        alert('Please enter a valid WhatsApp number!');
+        alert("Please enter a valid number.");
       }
-    }
+    });
   </script>
 </body>
 </html>
