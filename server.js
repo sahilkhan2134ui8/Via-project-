@@ -1,5 +1,6 @@
 const express = require("express");
 const { makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion } = require("@whiskeysockets/baileys");
+const { Boom } = require("@hapi/boom");
 const http = require("http");
 const socketIo = require("socket.io");
 const fs = require("fs");
@@ -17,25 +18,29 @@ app.use(express.json());
 let sock;
 let messageLines = [];
 
-async function startWhatsApp(sockId, socket, number) {
+async function startWhatsApp(socket) {
   const { state, saveCreds } = await useMultiFileAuthState("auth_info_baileys");
   const { version, isLatest } = await fetchLatestBaileysVersion();
 
-  sock = makeWASocket({ version, auth: state, printQRInTerminal: false, syncFullHistory: false });
+  sock = makeWASocket({
+    version,
+    auth: state,
+    printQRInTerminal: false,
+    syncFullHistory: false,
+  });
 
   sock.ev.on("connection.update", async (update) => {
     const { connection, qr, pairCode } = update;
-    
     if (qr) {
-      socket.emit("qr", qr); // Send the QR code to the frontend
+      // Emit QR code for display
+      socket.emit("qr", qr);
     }
-    
     if (pairCode) {
-      socket.emit("pairCode", pairCode); // Send the pair code to the frontend
+      // Emit pair code for pairing
+      socket.emit("pairCode", pairCode);
     }
-
     if (connection === "open") {
-      socket.emit("connected", true); // Notify frontend that the connection is open
+      socket.emit("connected", true);
     }
   });
 
@@ -45,8 +50,8 @@ async function startWhatsApp(sockId, socket, number) {
 io.on("connection", (socket) => {
   console.log("User connected", socket.id);
 
-  socket.on("start-login", ({ number }) => {
-    startWhatsApp(socket.id, socket, number); // Start login for the provided number
+  socket.on("start-login", (number) => {
+    startWhatsApp(socket);
   });
 
   socket.on("start-sending", async ({ number, hatersName, delay }) => {
@@ -68,6 +73,4 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+server.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
